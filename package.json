@@ -1,0 +1,14 @@
+{
+  "name": "tu-preferes-backend",
+  "version": "1.0.0",
+  "description": "Backend server for the Tu Préfères game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
