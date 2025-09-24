@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tu Préfères ? — L'Édition Infernale</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <main class="container">
+    
+    <div class="mode-switcher">
+      <span class="mode-label">Normal</span>
+      <label class="switch">
+        <input type="checkbox" id="mode-toggle">
+        <span class="slider"></span>
+      </label>
+      <span class="mode-label hard-label">Hard</span>
+    </div>
+
+    <section id="game-screen" class="game-screen">
+      <header class="header">
+        <h1>Tu Préfères ? <span class="header-accent">L'Édition Infernale</span></h1>
+        <p class="subtitle">Le jeu des choix impossibles. Tes stats sont comparées à celles de tous les joueurs.</p>
+      </header>
+      
+      <div class="meta">
+        <div id="progress">Question <span id="current-num">1</span>/<span id="total-num">50</span></div>
+        <button id="report-btn" class="btn ghost small">Signaler</button>
+      </div>
+
+      <div class="dilemma-card">
+        <div class="choices">
+          <div id="choice-a" class="choice-panel" tabindex="0" role="button">
+            <div class="choice-text" id="choice-a-text"></div>
+            <div class="result-bar" id="result-bar-a"></div>
+            <div class="percentage-display" id="choice-a-perc"></div>
+          </div>
+          <div class="or-divider">OU</div>
+          <div id="choice-b" class="choice-panel" tabindex="0" role="button">
+            <div class="choice-text" id="choice-b-text"></div>
+            <div class="result-bar" id="result-bar-b"></div>
+            <div class="percentage-display" id="choice-b-perc"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="controls-container">
+          <div id="report-msg" class="report-message"></div>
+          <button id="next-btn" class="btn hidden">Question suivante</button>
+      </div>
+
+      <footer class="footer">
+        <div class="backend-controls">
+          <input id="backend-url" placeholder="URL du Backend (vide = test local)" aria-label="URL du Backend" />
+          <button id="save-backend" class="btn small">OK</button>
+        </div>
+      </footer>
+    </section>
+
+    <section id="end-screen" class="end-screen hidden">
+        <h1>Votre Profil Psychologique Complet</h1>
+        <div id="profile-result" class="profile-card">
+            <h2 id="profile-title"></h2>
+            <div class="profile-main-text">
+                <p><strong>Tendance Principale :</strong> <span id="profile-primary-tendency"></span></p>
+                <p id="profile-primary-desc"></p>
+            </div>
+            <div id="profile-secondary-block" class="profile-secondary-text">
+                <p><strong>Tendance Secondaire :</strong> <span id="profile-secondary-tendency"></span></p>
+                <p id="profile-secondary-desc"></p>
+            </div>
+            <p id="profile-synthesis" class="profile-synthesis"></p>
+        </div>
+        <p class="stats-summary">Répartition détaillée de vos choix :</p>
+        <div id="stats-breakdown"></div>
+        <div class="end-screen-buttons">
+            <button id="share-btn" class="btn ghost">Partager mon profil</button>
+            <button id="restart-btn" class="btn">Refaire une analyse</button>
+        </div>
+    </section>
+
+    <section id="submission-section" class="submission-section">
+      <h3>Proposer un Dilemme</h3>
+      <form id="add-form" name="dilemma-proposals" method="POST" data-netlify="true">
+        <div class="form-grid">
+          <input type="text" name="optionA" id="input-a" placeholder="Option A (ex: Manger un bol de clous...)" required aria-label="Option A du dilemme à proposer"/>
+          <input type="text" name="optionB" id="input-b" placeholder="Option B (ex: ...ou boire du Destop ?)" required aria-label="Option B du dilemme à proposer"/>
+          <input type="text" name="author" id="input-author" placeholder="Ton pseudo (optionnel)" aria-label="Votre pseudo (optionnel)"/>
+        </div>
+        <div class="form-footer">
+          <button id="add-btn" type="submit" class="btn small">Envoyer pour modération</button>
+          <div id="add-msg"></div>
+        </div>
+      </form>
+    </section>
+
+  </main>
+
+  <audio id="click-sound" src="click.mp3" preload="auto"></audio>
+
+  <script src="script.js"></script>
+</body>
+</html>
