@@ -4,23 +4,40 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tu Préfères ? — L'Édition Infernale</title>
-  <link rel="icon" type="image/png" href="logo.png">
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d0f1a"/>
+  <link rel="apple-touch-icon" href="dilemmes.png">
+
+  <link rel="icon" type="image/png" href="dilemmes.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
 
+  <div id="install-banner" class="install-banner hidden">
+    <p>Installe le jeu sur ton appareil pour un accès direct !</p>
+    <button id="install-btn" class="btn small">Installer</button>
+    <button id="install-close-btn" class="btn ghost small">&times;</button>
+  </div>
+
   <main class="container">
     
-    <div class="mode-switcher">
-      <span class="mode-label">Normal</span>
-      <label class="switch">
-        <input type="checkbox" id="mode-toggle">
-        <span class="slider"></span>
-      </label>
-      <span class="mode-label hard-label">Hard</span>
+    <div class="mode-selection-area">
+      <div class="mode-switcher">
+        <span class="mode-label">Normal</span>
+        <label class="switch">
+          <input type="checkbox" id="mode-toggle">
+          <span class="slider"></span>
+        </label>
+        <span class="mode-label hard-label">Hard</span>
+      </div>
+      <div class="community-btn-container">
+        <button id="community-mode-btn" class="btn">Dilemmes de la Communauté</button>
+      </div>
     </div>
 
     <section id="game-screen" class="game-screen">
@@ -48,19 +65,20 @@
             <div class="percentage-display" id="choice-b-perc"></div>
           </div>
         </div>
+        <div id="author-display" class="author-display hidden"></div>
       </div>
-      
+
       <div class="controls-container">
           <div id="report-msg" class="report-message"></div>
-          <button id="next-btn" class="btn hidden">Question suivante</button>
+          <button id="next-btn" class="btn hidden">Question Suivante</button>
       </div>
 
       <footer class="footer">
         <div class="backend-controls">
-          <input id="backend-url" placeholder="URL du Backend (vide = test local)" aria-label="URL du Backend" />
-          <button id="save-backend" class="btn small">OK</button>
+            <input id="backend-url" placeholder="URL du Backend (vide = test local)" aria-label="URL du Backend" />
+            <button id="save-backend" class="btn small">OK</button>
         </div>
-      </footer>
+    </footer>
     </section>
 
     <section id="end-screen" class="end-screen hidden">
@@ -86,24 +104,54 @@
     </section>
 
     <section id="submission-section" class="submission-section">
-      <h3>Proposer un Dilemme</h3>
-      <form id="add-form" name="dilemma-proposals" method="POST" data-netlify="true">
-        <div class="form-grid">
-          <input type="text" name="optionA" id="input-a" placeholder="Option A (ex: Manger un bol de clous...)" required aria-label="Option A du dilemme à proposer"/>
-          <input type="text" name="optionB" id="input-b" placeholder="Option B (ex: ...ou boire du Destop ?)" required aria-label="Option B du dilemme à proposer"/>
-          <input type="text" name="author" id="input-author" placeholder="Ton pseudo (optionnel)" aria-label="Votre pseudo (optionnel)"/>
-        </div>
-        <div class="form-footer">
-          <button id="add-btn" type="submit" class="btn small">Envoyer pour modération</button>
-          <div id="add-msg"></div>
-        </div>
-      </form>
-    </section>
+  <h3>Proposer un Dilemme</h3>
+  <form id="add-form" name="dilemma-proposals" method="POST">
+    <div class="form-grid">
+      <input type="text" name="optionA" id="input-a" placeholder="Option A (ex: Manger un bol de clous...)" required aria-label="Option A du dilemme à proposer"/>
+      <input type="text" name="optionB" id="input-b" placeholder="Option B (ex: ...ou boire du Destop ?)" required aria-label="Option B du dilemme à proposer"/>
+      <input type="text" name="author" id="input-author" placeholder="Ton pseudo (optionnel)" aria-label="Votre pseudo (optionnel)"/>
+      
+      <select name="category" id="input-category" required aria-label="Choisir une catégorie">
+        <option value="" disabled selected>Choisir une catégorie...</option>
+        <option value="Corporel">Corporel</option>
+        <option value="Social">Social</option>
+        <option value="WTF">WTF</option>
+        <option value="Logique Absurde">Logique Absurde</option>
+        <option value="Dégoûtant">Dégoûtant</option>
+        <option value="Malaise">Malaise</option>
+        <option value="Moral">Moral</option>
+      </select>
+      </div>
+
+    <div class="form-footer">
+      <div class="g-recaptcha" data-sitekey="6LdMUdUrAAAAACcoQxzg0cnW6p9TEq-x5M5bi8I2"></div>
+      
+      <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response-input">
+
+      <button id="add-btn" type="submit" class="btn small">Envoyer pour modération</button>
+      <div id="add-msg"></div>
+    </div>
+</form>
+</section>
 
   </main>
 
   <audio id="click-sound" src="click.mp3" preload="auto"></audio>
-
   <script src="script.js"></script>
+  
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('Service Worker enregistré avec succès !');
+          })
+          .catch(err => {
+            console.log('Échec de l\'enregistrement du Service Worker: ', err);
+          });
+      });
+    }
+  </script>
+
 </body>
 </html>

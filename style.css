@@ -9,6 +9,7 @@
   --accent-primary: #8a2be2; /* Violet */
   --accent-secondary: #00bfff; /* Bleu Ciel */
   --accent-hard: #e53e3e;     /* Rouge pour le mode Hard */
+  --accent-community: #f0b429; /* Doré pour le mode Communauté */
   --text-light: #e0e8f4;
   --text-muted: #8a99b5;
   --success: #10b981;
@@ -72,26 +73,38 @@ body {
   display: none !important; 
 }
 
-/* --- INTERRUPTEUR DE MODE --- */
+/* --- SÉLECTION DU MODE (Switch + Bouton) --- */
+.mode-selection-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
 .mode-switcher {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  transition: opacity 0.3s;
 }
+
 .mode-label {
   font-weight: 600;
   color: var(--text-muted);
   transition: color 0.3s;
 }
+
 .mode-switcher .switch {
   position: relative;
   display: inline-block;
   width: 60px;
   height: 34px;
 }
+
 .switch input { opacity: 0; width: 0; height: 0; }
+
 .slider {
   position: absolute;
   cursor: pointer;
@@ -100,6 +113,7 @@ body {
   transition: .4s;
   border-radius: 34px;
 }
+
 .slider:before {
   position: absolute;
   content: "";
@@ -109,12 +123,41 @@ body {
   transition: .4s;
   border-radius: 50%;
 }
+
 input:checked + .slider { background-color: var(--accent-hard); }
+input:checked:disabled + .slider { background-color: #7b4a4a; } /* Style désactivé */
+input:disabled + .slider { background-color: #333; cursor: not-allowed; }
+
 input:checked + .slider:before { transform: translateX(26px); }
 
-/* Styles dynamiques du mode */
+/* Styles dynamiques des labels du switch */
 body.hard-mode .hard-label { color: var(--accent-hard); }
-body:not(.hard-mode) .mode-label:not(.hard-label) { color: var(--accent-primary); }
+body:not(.hard-mode):not(.community-mode) .mode-label:not(.hard-label) { color: var(--accent-primary); }
+
+/* Bouton Communauté */
+#community-mode-btn {
+  background: transparent;
+  border: 1px solid var(--accent-community);
+  color: var(--accent-community);
+  width: 100%;
+  max-width: 300px;
+}
+#community-mode-btn:hover {
+  background: rgba(240, 180, 41, 0.1);
+}
+/* Style du bouton communauté quand il est ACTIF */
+body.community-mode #community-mode-btn {
+  background: var(--accent-community);
+  color: var(--bg-dark);
+  box-shadow: 0 4px 15px rgba(240, 180, 41, 0.3);
+  transform: translateY(-2px);
+}
+/* Style du switch quand le mode communauté est ACTIF */
+body.community-mode .mode-switcher {
+  opacity: 0.5;
+  pointer-events: none; /* Empêche l'interaction */
+}
+
 
 /* --- HEADER & TITRES --- */
 .header { text-align: center; margin-bottom: 24px; }
@@ -133,6 +176,8 @@ body:not(.hard-mode) .mode-label:not(.hard-label) { color: var(--accent-primary)
 }
 .header-accent { color: var(--accent-primary); }
 body.hard-mode .header-accent { color: var(--accent-hard); }
+body.community-mode .header-accent { color: var(--accent-community); }
+
 
 /* --- PANNEAUX DE CHOIX --- */
 .choices { 
@@ -189,6 +234,13 @@ body.hard-mode .choice-panel.chosen {
     box-shadow: 0 10px 30px rgba(229, 62, 62, 0.3);
 }
 
+/* Thème Community Mode pour les panneaux */
+body.community-mode .choice-panel:hover { border-color: rgba(240, 180, 41, 0.5); }
+body.community-mode .choice-panel.chosen { 
+    border-color: var(--accent-community); 
+    box-shadow: 0 10px 30px rgba(240, 180, 41, 0.3);
+}
+
 /* --- AFFICHAGE DES RÉSULTATS --- */
 .result-bar {
   position: absolute;
@@ -213,6 +265,9 @@ body.hard-mode .choice-panel.chosen {
 body.hard-mode .result-bar {
   background: linear-gradient(to right, var(--accent-hard), transparent);
 }
+body.community-mode .result-bar {
+  background: linear-gradient(to right, var(--accent-community), transparent);
+}
 
 
 /* --- BOUTONS & CONTRÔLES --- */
@@ -226,7 +281,7 @@ body.hard-mode .result-bar {
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, color 0.2s, border-color 0.2s;
   -webkit-tap-highlight-color: transparent; /* Pour mobile */
 }
 .btn:hover { background: #9b4bf1; transform: translateY(-2px); }
@@ -252,8 +307,12 @@ body.hard-mode .result-bar {
 }
 
 /* Thème Hard Mode pour les boutons */
-body.hard-mode .btn { background: var(--accent-hard); }
-body.hard-mode .btn:hover { background: #c53030; }
+body.hard-mode .btn:not(#community-mode-btn) { background: var(--accent-hard); }
+body.hard-mode .btn:not(#community-mode-btn):hover { background: #c53030; }
+
+/* Thème Community Mode pour les boutons */
+body.community-mode .btn:not(.ghost):not(#community-mode-btn) { background: var(--accent-community); color: var(--bg-dark); }
+body.community-mode .btn:not(.ghost):not(#community-mode-btn):hover { background: #d9a225; }
 
 
 /* --- ÉLÉMENTS SPÉCIFIQUES --- */
@@ -298,6 +357,10 @@ body.hard-mode .profile-card {
     background: linear-gradient(to right, rgba(229, 62, 62, 0.2), rgba(229, 62, 62, 0.1));
     border: 1px solid var(--accent-hard);
 }
+body.community-mode .profile-card {
+    background: linear-gradient(to right, rgba(240, 180, 41, 0.2), rgba(240, 180, 41, 0.1));
+    border: 1px solid var(--accent-community);
+}
 
 /* --- SECTION DE SOUMISSION --- */
 .submission-section { margin-top: 24px; }
@@ -316,6 +379,25 @@ body.hard-mode .profile-card {
 .form-footer { margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 16px; }
 #add-msg { color: var(--success); font-size: 0.9rem; height: 1em; }
 
+/* ... (après les styles de #add-form input) ... */
+
+#add-form select {
+  width: 100%; 
+  padding: 12px; 
+  border-radius: 8px; 
+  border: var(--glass-border); 
+  background: var(--card-bg); 
+  color: var(--text-light); 
+  font-family: var(--font-main);
+  transition: border-color 0.2s;
+  font-size: 1rem; /* Assure une taille de police cohérente */
+}
+
+#add-form select:focus-visible { 
+  border-color: var(--accent-secondary); 
+  outline: none; 
+}
+
 /* --- RESPONSIVE DESIGN --- */
 @media (max-width: 600px) {
   .choices { grid-template-columns: 1fr; gap: 12px; }
@@ -326,8 +408,6 @@ body.hard-mode .profile-card {
   .choice-text { font-size: 1rem; }
   .end-screen-buttons { flex-direction: column; }
 }
-
-/* AJOUTER CECI À LA FIN DE VOTRE FICHIER style.css */
 
 /* --- AMÉLIORATIONS ÉCRAN DE FIN --- */
 .end-screen h1 {
@@ -377,3 +457,93 @@ body.hard-mode .profile-card {
     #profile-title { font-size: 1.5rem; }
     .profile-card { padding: 20px; }
 }
+
+/* --- BANNIÈRE D'INSTALLATION PWA --- */
+.install-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 500px;
+  background: var(--card-bg);
+  border: var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: slideInUp 0.5s ease-out;
+}
+
+.install-banner.hidden {
+  display: none;
+}
+
+.install-banner p {
+  margin: 0;
+  font-weight: 600;
+  flex-grow: 1;
+}
+
+#install-close-btn {
+  padding: 6px 10px;
+  line-height: 1;
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translate(-50%, 100px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+/* --- AFFICHAGE AUTEUR COMMUNAUTAIRE --- */
+.author-display {
+  text-align: center;
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.85rem;
+  transition: opacity 0.3s ease;
+  opacity: 1;
+}
+
+.author-display.hidden {
+  opacity: 0;
+  display: none; /* S'assure qu'il ne prend pas de place quand il est caché */
+}
+
+/* Amélioration de l'animation de sélection */
+.choice-panel.chosen { 
+    border-color: var(--accent-primary); 
+    transform: translateY(-5px) scale(1.05) rotate(-1deg); /* Animation plus marquée */
+    box-shadow: 0 15px 40px rgba(138, 43, 226, 0.4); /* Ombre plus forte */
+}
+
+/* Classe pour estomper le panneau non choisi */
+.choice-panel.not-chosen {
+    opacity: 0.6;
+    transform: scale(0.95);
+    pointer-events: none; /* Empêche de cliquer à nouveau */
+}
+
+/* Thèmes Hard et Community pour l'ombre de la carte choisie */
+body.hard-mode .choice-panel.chosen { 
+    border-color: var(--accent-hard); 
+    box-shadow: 0 15px 40px rgba(229, 62, 62, 0.4);
+}
+body.community-mode .choice-panel.chosen { 
+    border-color: var(--accent-community); 
+    box-shadow: 0 15px 40px rgba(240, 180, 41, 0.4);
+}
+

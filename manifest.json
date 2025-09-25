@@ -1,0 +1,22 @@
+{
+  "name": "Tu Préfères ? L'Édition Infernale",
+  "short_name": "Tu Préfères ?",
+  "description": "Le jeu des choix impossibles. Tes stats sont comparées à celles de tous les joueurs.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0f1a",
+  "theme_color": "#0d0f1a",
+  "icons": [
+    {
+      "src": "dilemmes.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "dilemmes.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
