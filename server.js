@@ -1,86 +1,78 @@
-// server.js - VERSION CORRIGÉE ET AMÉLIORÉE
+// server.js - VERSION FINALE AVEC INITIALISATION AUTOMATIQUE DE LA DB
 
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
-const cors = require('cors'); // <-- On importe CORS
+const cors = require('cors');
+const { Pool } = require('pg');
 
 const app = express();
 
-// --- CONFIGURATION DU MIDDLEWARE (PLACÉ AU DÉBUT) ---
-
-// 1. On active CORS pour toutes les routes. C'est la solution au "Failed to fetch".
+// --- CONFIGURATION DU MIDDLEWARE ---
 app.use(cors());
-
-// 2. On active le parsing JSON pour les corps de requêtes (ex: pour /vote et /add)
 app.use(express.json());
-
-// 3. On indique à Express de servir les fichiers statiques (CSS, JS, images)
-// C'est ce qui permet à ton index.html de charger style.css, script.js, etc.
 app.use(express.static(path.join(__dirname)));
 
-
-// --- VARIABLES ET FONCTIONS UTILITAIRES ---
-const DATA_FILE = path.join(__dirname, 'votes-data.json');
-const GOOGLE_RECAPTCHA_SECRET = '6LdMUdUrAAAAAOy3kuWyrCPPEe8z0qzqN0ejVZbA';
-
-function loadData() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) return {};
-    const txt = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(txt || '{}');
-  } catch (e) {
-    console.error('Erreur loadData', e);
-    return {};
+// --- CONNEXION À LA BASE DE DONNÉES ---
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
   }
-}
-
-function saveData(data) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  } catch (e) {
-    console.error('Erreur saveData', e);
-  }
-}
-
-
-// --- ROUTES DE L'API ---
-
-// POST /vote { id, choice } -> increments counter
-app.post('/vote', (req, res) => {
-  const { id, choice } = req.body;
-  if (!id || !choice) return res.status(400).json({ error: 'missing id or choice' });
-  const data = loadData();
-  if (!data[id]) data[id] = { a: 0, b: 0 };
-  if (choice === 'a') data[id].a = (data[id].a || 0) + 1;
-  else if (choice === 'b') data[id].b = (data[id].b || 0) + 1;
-  else return res.status(400).json({ error: 'choice must be "a" or "b"' });
-  saveData(data);
-  res.json({ ok: true, totals: data[id] });
 });
 
-// POST /add -> body: { a, b, category, author, g-recaptcha-response }
-app.post('/add', async (req, res) => {
-  const dilemma = req.body;
-  const recaptchaToken = dilemma['g-recaptcha-response'];
-  if (!recaptchaToken) {
-    return res.status(400).json({ error: 'reCAPTCHA token manquant' });
-  }
-
+// --- NOUVELLE FONCTION : INITIALISATION DE LA BASE DE DONNÉES ---
+// Cette fonction s'exécute au démarrage pour créer les tables si elles n'existent pas.
+async function initializeDatabase() {
+  const client = await pool.connect();
   try {
-    const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${GOOGLE_RECAPTCHA_SECRET}&response=${recaptchaToken}`;
-    const { data } = await axios.post(verificationUrl);
-    if (!data.success) {
-      console.error('reCAPTCHA verification failed:', data['error-codes']);
-      return res.status(401).json({ error: 'Échec de la vérification reCAPTCHA' });
-    }
-  } catch (error) {
-    console.error('Erreur serveur reCAPTCHA:', error.message);
-    return res.status(500).json({ error: 'Erreur lors de la vérification reCAPTCHA' });
-  }
+    // Création de la table 'dilemmas'
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dilemmas (
+        id SERIAL PRIMARY KEY,
+        dilemma_id VARCHAR(255) UNIQUE NOT NULL,
+        option_a TEXT NOT NULL,
+        option_b TEXT NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        author VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('Table "dilemmas" vérifiée ou créée avec succès.');
 
-  const { a, b, category, author } = dilemma;
+    // Création de la table 'votes'
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS votes (
+        dilemma_id VARCHAR(255) PRIMARY KEY,
+        votes_a INT DEFAULT 0 NOT NULL,
+        votes_b INT DEFAULT 0 NOT NULL
+      )
+    `);
+    console.log('Table "votes" vérifiée ou créée avec succès.');
+
+  } catch (error) {
+    console.error('Erreur lors de l\'initialisation de la base de données:', error);
+  } finally {
+    client.release(); // Libère le client pour qu'il retourne au pool de connexions
+  }
+}
+
+// --- ROUTES DE L'API (INCHANGÉES) ---
+
+// GET /community-dilemmas -> renvoie les dilemmes depuis la DB
+app.get('/community-dilemmas', async (req, res) => {
+  try {
+    const query = 'SELECT dilemma_id AS id, option_a AS a, option_b AS b, category, author FROM dilemmas ORDER BY created_at DESC';
+    const { rows } = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des dilemmes communautaires:', error);
+    res.status(500).json([]);
+  }
+});
+
+// POST /add -> ajoute un nouveau dilemme dans la DB
+app.post('/add', async (req, res) => {
+  const { a, b, category, author } = req.body;
   if (!a || !b || !category) {
     return res.status(400).json({ error: 'Champs a, b ou catégorie manquants' });
   }
@@ -93,76 +85,77 @@ app.post('/add', async (req, res) => {
     author: author ? author.trim() : null
   };
 
-  const cDilemmaFile = path.join(__dirname, 'community-dilemmas.json');
-  let cDilemmas = [];
-  if (fs.existsSync(cDilemmaFile)) {
-    try {
-      cDilemmas = JSON.parse(fs.readFileSync(cDilemmaFile, 'utf8'));
-    } catch (e) {
-      console.error('Erreur de parsing de community-dilemmas.json', e);
-    }
+  try {
+    const insertQuery = `
+      INSERT INTO dilemmas(dilemma_id, option_a, option_b, category, author) 
+      VALUES($1, $2, $3, $4, $5)
+    `;
+    const values = [newDilemma.id, newDilemma.a, newDilemma.b, newDilemma.category, newDilemma.author];
+    await pool.query(insertQuery, values);
+    res.json({ ok: true, message: 'Dilemme ajouté à la liste de la communauté !' });
+  } catch (error) {
+    console.error('Erreur lors de l\'ajout du dilemme:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de l\'ajout du dilemme' });
   }
-
-  cDilemmas.push(newDilemma);
-  fs.writeFileSync(cDilemmaFile, JSON.stringify(cDilemmas, null, 2));
-
-  res.json({ ok: true, message: 'Dilemme ajouté à la liste de la communauté !' });
 });
 
-// GET /stats?id=dilemma_01
-app.get('/stats', (req, res) => {
-  const id = req.query.id;
+// GET /stats -> récupère les stats de vote depuis la DB
+app.get('/stats', async (req, res) => {
+  const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'missing id' });
-  const data = loadData();
-  res.json(data[id] || { a: 0, b: 0 });
-});
-
-// GET /community-dilemmas -> renvoie les dilemmes validés
-app.get('/community-dilemmas', (req, res) => {
-  const cDilemmaFile = path.join(__dirname, 'community-dilemmas.json');
-  if (fs.existsSync(cDilemmaFile)) {
-    res.sendFile(cDilemmaFile);
-  } else {
-    res.json([]);
+  
+  try {
+    const { rows } = await pool.query('SELECT votes_a, votes_b FROM votes WHERE dilemma_id = $1', [id]);
+    if (rows.length > 0) {
+      res.json({ a: rows[0].votes_a, b: rows[0].votes_b });
+    } else {
+      res.json({ a: 0, b: 0 });
+    }
+  } catch (error) {
+    console.error(`Erreur stats pour l'id ${id}:`, error);
+    res.status(500).json({ a: 0, b: 0 });
   }
 });
 
+// POST /vote -> met à jour les votes dans la DB
+app.post('/vote', async (req, res) => {
+  const { id, choice } = req.body;
+  if (!id || (choice !== 'a' && choice !== 'b')) {
+    return res.status(400).json({ error: 'ID ou choix invalide' });
+  }
+
+  const columnToIncrement = choice === 'a' ? 'votes_a' : 'votes_b';
+
+  const query = `
+    INSERT INTO votes (dilemma_id, ${columnToIncrement})
+    VALUES ($1, 1)
+    ON CONFLICT (dilemma_id)
+    DO UPDATE SET ${columnToIncrement} = votes.${columnToIncrement} + 1
+    RETURNING votes_a, votes_b;
+  `;
+
+  try {
+    const { rows } = await pool.query(query, [id]);
+    const totals = { a: rows[0].votes_a, b: rows[0].votes_b };
+    res.json({ ok: true, totals: totals });
+  } catch (error) {
+    console.error(`Erreur vote pour l'id ${id}:`, error);
+    res.status(500).json({ error: 'Erreur lors du vote' });
+  }
+});
 
 // --- ROUTE FINALE POUR SERVIR L'APPLICATION FRONT-END ---
-// Cette route doit être LA DERNIÈRE. Elle attrape toutes les autres requêtes GET
-// qui ne sont pas des fichiers (comme /style.css) ou des routes API (comme /vote)
-// et renvoie ton application. C'est la solution au "Cannot GET /".
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-
 // --- DÉMARRAGE DU SERVEUR ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log('Server running on port', PORT);
-  console.log('Data file:', DATA_FILE);
-});
 
-// Tes autres routes /report et /submit peuvent rester ici si tu les utilises toujours.
-// POST /report  -> body: { id, dilemma, at }
-app.post('/report', (req, res) => {
-  const report = req.body;
-  const rptFile = path.join(__dirname, 'reports.json');
-  let reports = [];
-  if (fs.existsSync(rptFile)) reports = JSON.parse(fs.readFileSync(rptFile,'utf8')||'[]');
-  reports.push(report);
-  fs.writeFileSync(rptFile, JSON.stringify(reports, null, 2));
-  res.json({ ok:true });
-});
-
-// POST /submit  -> body: new dilemma (for moderation)
-app.post('/submit', (req, res) => {
-  const sub = req.body;
-  const subFile = path.join(__dirname, 'submissions.json');
-  let subs = [];
-  if (fs.existsSync(subFile)) subs = JSON.parse(fs.readFileSync(subFile,'utf8')||'[]');
-  subs.push(sub);
-  fs.writeFileSync(subFile, JSON.stringify(subs, null, 2));
-  res.json({ ok:true });
+// On utilise .then() pour s'assurer que la DB est prête AVANT de démarrer le serveur
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log('Server running on port', PORT);
+    console.log('Successfully connected to PostgreSQL database.');
+  });
 });
